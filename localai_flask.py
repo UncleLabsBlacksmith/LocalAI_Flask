@@ -1,0 +1,1462 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+r"""
+Local AI Chat • Ollama — Flask single-file edition
+แปลงจาก LocalAI.py (tkinter) เป็นเว็บแอป Flask ไฟล์เดียว เปิดใช้ผ่านเบราว์เซอร์
+Developed by Uncle Engineer — https://uncle-engineer.com/
+
+====================================================================
+ วิธีติดตั้ง (ทำครั้งเดียว)
+====================================================================
+ ขั้นที่ 1  ติดตั้ง Python
+   - ดาวน์โหลดจาก https://www.python.org/downloads/ (เวอร์ชัน 3.9 ขึ้นไป)
+   - Windows: ตอนติดตั้ง ต้องติ๊กช่อง  ☑ "Add python.exe to PATH"  ที่หน้าแรกก่อนกด Install Now
+     (ถ้าลืมติ๊ก ให้ถอนการติดตั้งแล้วลงใหม่ หรือเปิดตัวติดตั้งอีกครั้งแล้วเลือก Modify)
+
+ ขั้นที่ 2  เปิดหน้าต่างพิมพ์คำสั่ง
+   - Windows: กดปุ่ม Windows พิมพ์  cmd  แล้วกด Enter
+   - macOS:   กด Command + Space พิมพ์  Terminal  แล้วกด Enter
+   - ตรวจว่า Python พร้อมใช้ โดยพิมพ์คำสั่งนี้แล้วกด Enter (ต้องขึ้นเลขเวอร์ชัน เช่น Python 3.12.x)
+         python --version              (macOS ใช้  python3 --version)
+
+ ขั้นที่ 3  ติดตั้งไลบรารีที่ต้องใช้ — พิมพ์ทีละบรรทัด แล้วกด Enter
+         pip install flask
+         pip install openpyxl python-docx python-pptx pypdf xlrd
+   - บรรทัดแรก (flask) จำเป็น — เป็นตัวรันเว็บ
+   - บรรทัดที่สองใช้อ่านไฟล์แนบ: openpyxl = Excel .xlsx, xlrd = Excel .xls รุ่นเก่า,
+     python-docx = Word, python-pptx = PowerPoint, pypdf = PDF  (ไม่ติดตั้งก็ใช้แชตได้ แต่แนบไฟล์ชนิดนั้นไม่ได้)
+   - macOS ใช้  pip3  แทน  pip
+   - ถ้าขึ้นว่า 'pip' is not recognized ให้ใช้   python -m pip install flask   แทน
+
+ ขั้นที่ 4  ติดตั้ง Ollama และดาวน์โหลดโมเดล
+   - https://ollama.com/download  (รายละเอียดดูได้จากปุ่ม ? มุมขวาบนในหน้าเว็บ)
+
+====================================================================
+ วิธีรัน (ทุกครั้งที่ใช้งาน)
+====================================================================
+   1. เปิด Ollama ให้ทำงานอยู่ (เห็นไอคอน 🦙 ข้างนาฬิกา)
+   2. เปิด cmd / Terminal แล้วเข้าไปที่โฟลเดอร์ที่เก็บไฟล์นี้ เช่น
+         cd C:\Users\ชื่อผู้ใช้\Downloads
+   3. รันโปรแกรม
+         python localai_flask.py       (macOS ใช้  python3 localai_flask.py)
+   4. เปิดเบราว์เซอร์ไปที่  http://127.0.0.1:5050
+      เครื่องอื่นในวง LAN เปิด  http://<IP เครื่องนี้>:5050  (โปรแกรมจะพิมพ์ URL ให้ตอนเริ่ม)
+   5. ปิดโปรแกรม: กด Ctrl + C ในหน้าต่าง cmd / Terminal
+   * เคล็ดลับ Windows: เปิดโฟลเดอร์ที่มีไฟล์นี้ คลิกช่องที่อยู่ (address bar) ด้านบน
+     พิมพ์  cmd  แล้วกด Enter จะได้หน้าต่าง cmd ที่อยู่ในโฟลเดอร์นั้นทันที ไม่ต้องพิมพ์ cd
+
+ความสามารถ (เหมือนเวอร์ชัน tkinter):
+  • แชตแบบ streaming กับ Ollama ในเครื่อง (/api/chat)
+  • เลือก/โหลดรายชื่อโมเดล (/api/tags)
+  • ประวัติแชต: ค้นหา เปลี่ยนชื่อ ลบ (ใช้ไฟล์ JSON เดิม ~/.local_ai_ollama_chat.json
+    จึงเห็นประวัติร่วมกับเวอร์ชัน tkinter ได้)
+  • แสดงผล Markdown (หัวข้อ, ลิสต์, โค้ดบล็อก, ตัวหนา/เอียง, ลิงก์, quote)
+  • โหมด Thinking (field "thinking" และแท็ก <think>…</think>) แบบพับ/ขยายได้
+  • ตอบใหม่, ส่งออก .md, คัดลอกคำตอบ/โค้ด, แสดง tokens และ tok/s
+  • คีย์ลัด: Enter ส่ง • Shift+Enter ขึ้นบรรทัด • Esc หยุด • Alt+N แชตใหม่
+  • แนบไฟล์ (ปุ่ม 📎 / ลากวาง / Ctrl+V วางรูป):
+      - รูปภาพ → ส่งให้โมเดล vision (เช่น qwen2.5vl, llava, gemma3, llama3.2-vision)
+      - เอกสาร → แปลงเป็นข้อความให้ AI วิเคราะห์: xlsx/xlsm, xls, csv/tsv, docx, pptx, pdf,
+        txt/md/json/โค้ด/G-code
+"""
+
+import csv
+import io
+import json
+import os
+import re
+import socket
+import sys
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+from flask import Flask, Response, jsonify, request, stream_with_context
+
+APP_TITLE = "Local AI Chat • Ollama"
+DATA_FILE = Path(os.environ.get("LOCALAI_DATA") or Path.home() / ".local_ai_ollama_chat.json")
+# 0.0.0.0 = รับการเชื่อมต่อจากทุกเครื่องในวง LAN  (ตั้ง LOCALAI_HOST=127.0.0.1 เพื่อเปิดเฉพาะเครื่องนี้)
+LISTEN_HOST = os.environ.get("LOCALAI_HOST", "0.0.0.0")
+LISTEN_PORT = int(os.environ.get("LOCALAI_PORT", "5050"))
+
+DEFAULTS = {
+    "host": "http://localhost:11434", "model": "", "systemPrompt": "",
+    "temperature": 0.7, "numCtx": 8192, "maxHistory": 20, "think": False,
+}
+# อนุญาตเฉพาะ Ollama ในเครื่อง (กัน server ถูกใช้ยิงไปที่อื่น)
+HOST_RE = re.compile(r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$", re.I)
+
+MAX_UPLOAD_MB = 30          # ขนาดไฟล์แนบสูงสุดต่อไฟล์
+MAX_DOC_CHARS = 120_000     # ตัดข้อความที่ดึงจากเอกสารไม่ให้เกินนี้ (กัน context ล้น)
+MAX_SHEET_ROWS = 3000       # จำนวนแถวสูงสุดต่อชีต
+
+TEXT_EXT = {".txt", ".md", ".json", ".xml", ".html", ".htm", ".log", ".ini", ".cfg", ".yaml",
+            ".yml", ".toml", ".py", ".js", ".ts", ".c", ".cpp", ".h", ".java", ".cs", ".sql",
+            ".nc", ".gcode", ".tap", ".css", ".sh", ".bat"}
+
+app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
+
+
+# ------------------------------------------------------------ document → text
+def _need(module, pip_name):
+    try:
+        return __import__(module)
+    except ImportError:
+        raise RuntimeError(f"ต้องติดตั้งไลบรารีเพิ่มก่อน:  pip install {pip_name}")
+
+
+def _cell(v):
+    if v is None:
+        return ""
+    if isinstance(v, float):
+        return f"{v:.10g}"
+    if hasattr(v, "isoformat"):
+        if hasattr(v, "hour") and hasattr(v, "date") and (v.hour, v.minute, v.second) == (0, 0, 0):
+            return v.date().isoformat()      # วันที่ล้วนใน Excel ไม่ต้องมี 00:00:00
+        return v.isoformat(sep=" ") if hasattr(v, "date") else v.isoformat()
+    return str(v)
+
+
+def _rows_to_csv(rows):
+    buf = io.StringIO()
+    w = csv.writer(buf, lineterminator="\n")
+    n = 0
+    for row in rows:
+        cells = [_cell(v) for v in row]
+        while cells and cells[-1] == "":
+            cells.pop()
+        if not cells:
+            continue
+        w.writerow(cells)
+        n += 1
+        if n >= MAX_SHEET_ROWS:
+            buf.write(f"... (ตัดเหลือ {MAX_SHEET_ROWS} แถวแรก)\n")
+            break
+        if buf.tell() > MAX_DOC_CHARS:
+            break
+    return buf.getvalue()
+
+
+def extract_xlsx(data):
+    openpyxl = _need("openpyxl", "openpyxl")
+    # data_only=True → ได้ค่าที่คำนวณแล้วของสูตร (ค่าที่ Excel บันทึกไว้ล่าสุด)
+    wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True, data_only=True)
+    parts = []
+    for ws in wb.worksheets:
+        dim = ws.calculate_dimension() if hasattr(ws, "calculate_dimension") else ""
+        parts.append(f"### ชีต: {ws.title}" + (f"  (ช่วง {dim})" if dim else "")
+                     + "\n" + _rows_to_csv(ws.iter_rows(values_only=True)))
+    wb.close()
+    return "\n".join(parts)
+
+
+def extract_xls(data):
+    xlrd = _need("xlrd", "xlrd")
+    book = xlrd.open_workbook(file_contents=data)
+    return "\n".join(f"### ชีต: {sh.name}\n" + _rows_to_csv(sh.row_values(r) for r in range(sh.nrows))
+                     for sh in book.sheets())
+
+
+def extract_docx(data):
+    docx = _need("docx", "python-docx")
+    d = docx.Document(io.BytesIO(data))
+    out = [p.text for p in d.paragraphs if p.text.strip()]
+    for i, t in enumerate(d.tables, 1):
+        out.append(f"\n### ตารางที่ {i}")
+        out.append(_rows_to_csv([c.text for c in r.cells] for r in t.rows))
+    return "\n".join(out)
+
+
+def extract_pptx(data):
+    pptx = _need("pptx", "python-pptx")
+    prs = pptx.Presentation(io.BytesIO(data))
+    out = []
+    for i, slide in enumerate(prs.slides, 1):
+        texts = [sh.text_frame.text for sh in slide.shapes
+                 if getattr(sh, "has_text_frame", False) and sh.text_frame.text.strip()]
+        out.append(f"### สไลด์ {i}\n" + "\n".join(texts))
+    return "\n".join(out)
+
+
+def extract_pdf(data):
+    pypdf = _need("pypdf", "pypdf")
+    reader = pypdf.PdfReader(io.BytesIO(data))
+    out = []
+    for i, page in enumerate(reader.pages, 1):
+        out.append(f"### หน้า {i}\n" + (page.extract_text() or ""))
+        if sum(map(len, out)) > MAX_DOC_CHARS:
+            break
+    text = "\n".join(out)
+    if len(text.strip()) < 20 * max(1, len(reader.pages)) // 4:
+        text += "\n(หมายเหตุ: PDF นี้แทบไม่มีข้อความ อาจเป็นไฟล์สแกน ลองแปลงหน้าเป็นรูปแล้วแนบแทน)"
+    return text
+
+
+def decode_text(data):
+    for enc in ("utf-8-sig", "cp874", "latin-1"):   # cp874 = ภาษาไทยของ Windows
+        try:
+            return data.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return data.decode("utf-8", "replace")
+
+
+def extract_text(filename, data):
+    ext = os.path.splitext(filename.lower())[1]
+    if ext in (".xlsx", ".xlsm"):
+        return extract_xlsx(data)
+    if ext == ".xls":
+        return extract_xls(data)
+    if ext == ".docx":
+        return extract_docx(data)
+    if ext == ".pptx":
+        return extract_pptx(data)
+    if ext == ".pdf":
+        return extract_pdf(data)
+    if ext in (".csv", ".tsv"):
+        text = decode_text(data)
+        delim = "\t" if ext == ".tsv" else ","
+        return _rows_to_csv(csv.reader(io.StringIO(text), delimiter=delim))
+    if ext in TEXT_EXT or b"\x00" not in data[:4096]:
+        return decode_text(data)
+    raise RuntimeError(f"ยังไม่รองรับไฟล์ชนิด {ext or 'นี้'}")
+
+
+# ------------------------------------------------------------ data
+def load_data():
+    st = {"settings": dict(DEFAULTS), "chats": [], "currentId": None}
+    try:
+        with open(DATA_FILE, encoding="utf-8") as f:
+            saved = json.load(f)
+        if isinstance(saved, dict):
+            st["settings"].update(saved.get("settings") or {})
+            if isinstance(saved.get("chats"), list):
+                st["chats"] = saved["chats"]
+            st["currentId"] = saved.get("currentId")
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        print("โหลดข้อมูลแชตไม่ได้:", e, file=sys.stderr)
+    for c in st["chats"]:
+        for m in c.get("messages", []):
+            m.pop("streaming", None)
+    return st
+
+
+def save_data(data):
+    tmp = DATA_FILE.with_name(DATA_FILE.name + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, DATA_FILE)
+
+
+def ollama_host():
+    host = (load_data()["settings"].get("host") or DEFAULTS["host"]).rstrip("/")
+    return host if HOST_RE.match(host) else DEFAULTS["host"]
+
+
+def http_error_reason(e):
+    try:
+        return json.loads(e.read().decode("utf-8")).get("error", "") or f"HTTP {e.code}"
+    except Exception:
+        return f"HTTP {e.code}"
+
+
+# ------------------------------------------------------------ routes
+@app.get("/")
+def index():
+    return Response(PAGE.replace("__TITLE__", APP_TITLE)
+                        .replace("__DATA_FILE__", str(DATA_FILE).replace("\\", "/")),
+                    mimetype="text/html")
+
+
+@app.get("/api/data")
+def get_data():
+    return jsonify(load_data())
+
+
+@app.put("/api/data")
+def put_data():
+    d = request.get_json(silent=True)
+    if not isinstance(d, dict) or not isinstance(d.get("chats"), list):
+        return jsonify(error="รูปแบบข้อมูลไม่ถูกต้อง"), 400
+    settings = dict(DEFAULTS)
+    settings.update(d.get("settings") or {})
+    settings["host"] = str(settings.get("host") or "").strip().rstrip("/")
+    if not HOST_RE.match(settings["host"]):
+        return jsonify(error="Host ต้องเป็น http://localhost:11434 หรือ http://127.0.0.1:11434"), 400
+    for c in d["chats"]:
+        for m in c.get("messages", []):
+            m.pop("streaming", None)
+    try:
+        save_data({"settings": settings, "chats": d["chats"], "currentId": d.get("currentId")})
+    except Exception as e:
+        return jsonify(error="บันทึกไม่ได้: " + str(e)), 500
+    return jsonify(ok=True)
+
+
+@app.get("/api/models")
+def models():
+    try:
+        with urllib.request.urlopen(ollama_host() + "/api/tags", timeout=8) as r:
+            data = json.loads(r.read().decode("utf-8"))
+        return jsonify(models=[x.get("name") for x in data.get("models", []) if x.get("name")])
+    except Exception as e:
+        return jsonify(error=str(e)), 502
+
+
+@app.post("/api/extract")
+def extract():
+    f = request.files.get("file")
+    if not f or not f.filename:
+        return jsonify(error="ไม่พบไฟล์"), 400
+    try:
+        text = extract_text(f.filename, f.read()).strip()
+    except Exception as e:
+        return jsonify(error=f"อ่านไฟล์ {f.filename} ไม่ได้: {e}"), 422
+    if not text:
+        return jsonify(error=f"ไม่พบข้อความในไฟล์ {f.filename}"), 422
+    truncated = len(text) > MAX_DOC_CHARS
+    if truncated:
+        text = text[:MAX_DOC_CHARS] + f"\n... (ตัดเหลือ {MAX_DOC_CHARS:,} ตัวอักษรแรก)"
+    return jsonify(name=f.filename, text=text, chars=len(text), truncated=truncated)
+
+
+@app.errorhandler(413)
+def too_large(_e):
+    return jsonify(error=f"ไฟล์ใหญ่เกิน {MAX_UPLOAD_MB} MB"), 413
+
+
+@app.post("/api/chat")
+def chat():
+    body = request.get_json(silent=True) or {}
+    if not body.get("model") or not isinstance(body.get("messages"), list):
+        return jsonify(error="ต้องระบุ model และ messages"), 400
+    body["stream"] = True
+    host = ollama_host()
+
+    def post(b):
+        req = urllib.request.Request(host + "/api/chat", data=json.dumps(b).encode("utf-8"),
+                                     headers={"Content-Type": "application/json"}, method="POST")
+        return urllib.request.urlopen(req, timeout=600)
+
+    def err(msg):
+        return json.dumps({"error": msg}, ensure_ascii=False) + "\n"
+
+    def generate():
+        try:
+            try:
+                resp = post(body)
+            except urllib.error.HTTPError as e:
+                # โมเดลที่ไม่รองรับ think → ลองใหม่โดยไม่ส่ง think
+                if body.get("think") and e.code in (400, 422):
+                    body.pop("think", None)
+                    resp = post(body)
+                else:
+                    raise
+        except urllib.error.HTTPError as e:
+            yield err(http_error_reason(e))
+            return
+        except Exception as e:
+            yield err(str(e))
+            return
+        # ถ้าเบราว์เซอร์กดหยุด (ตัดการเชื่อมต่อ) generator จะถูกปิด → with ปิด resp ให้
+        try:
+            with resp:
+                for raw in resp:
+                    line = raw.strip()
+                    if line:
+                        yield line.decode("utf-8", "replace") + "\n"
+        except Exception as e:
+            yield err(str(e))
+
+    return Response(stream_with_context(generate()), mimetype="application/x-ndjson",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+# ------------------------------------------------------------ page (HTML + CSS + JS)
+PAGE = r"""<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<style>
+:root{
+  --bg:#202123;--side:#151617;--panel:#2c2d30;--panel-hover:#3a3c3e;--line:#414348;
+  --border:#4b4c50;--text:#f0f0f0;--muted:#a7a7aa;--accent:#21c482;--accent-hover:#35d793;
+  --accent-text:#092b1d;--red:#eb747c;--stop-bg:#4a2d31;--user-bubble:#30353a;
+  --code-bg:#111315;--inline-code:#38393c;--field:#28292b;--link:#8ad3ff;--user-name:#a2dafa;
+  --active-row:#303134;--composer:#2e3032;--thought-bg:#26272a;--thought-fg:#b2b5b7;
+  --quote:#c9c9ce;--select:#2f5545;
+  --ui:"Leelawadee UI","Noto Sans Thai UI","Noto Sans Thai","Sarabun","Thonburi","Segoe UI",Tahoma,sans-serif;
+  --mono:"Cascadia Mono",Consolas,Menlo,"JetBrains Mono","DejaVu Sans Mono","Courier New",monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{display:flex;background:var(--bg);color:var(--text);font:15px/1.6 var(--ui)}
+::selection{background:var(--select)}
+button{font:inherit;color:inherit;cursor:pointer}
+input,textarea,select{font:inherit;color:var(--text)}
+::-webkit-scrollbar{width:10px}::-webkit-scrollbar-thumb{background:var(--panel);border-radius:5px}
+::-webkit-scrollbar-thumb:hover{background:var(--line)}
+
+/* sidebar */
+#sidebar{width:272px;flex:none;background:var(--side);border-right:1px solid #2d2d2d;
+  display:flex;flex-direction:column;padding:16px 12px}
+body.no-side #sidebar{display:none}
+.brand{font-weight:700;font-size:16px;padding:0 6px 12px;letter-spacing:.5px}
+.brand b{color:var(--accent)}
+.btn{background:var(--panel);border:1px solid #424348;border-radius:8px;padding:8px 12px}
+.btn:hover{background:var(--panel-hover)}
+.btn:disabled{color:var(--muted);cursor:default;background:var(--panel)}
+.btn.full{width:100%}
+.btn.small{padding:5px 10px;font-size:13px}
+.btn.accent{background:var(--accent);color:var(--accent-text);border-color:var(--accent);font-weight:700}
+.btn.accent:hover{background:var(--accent-hover)}
+.btn.stop{background:var(--stop-bg);color:var(--red);border-color:var(--red);font-weight:700}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted);font-size:13px;padding:4px 6px}
+.btn.ghost:hover{background:#2a2b2e;color:var(--text)}
+.section{color:var(--muted);font-size:12px;padding:14px 4px 4px}
+.field{width:100%;background:var(--field);border:1px solid var(--border);border-radius:8px;padding:7px 9px;outline:none}
+.field:focus{border-color:var(--accent)}
+#history{flex:1;overflow-y:auto;margin:12px 0 0;padding:0;list-style:none}
+#history li{display:flex;align-items:center;gap:4px;padding:7px 8px;border-radius:7px;cursor:pointer;
+  white-space:nowrap}
+#history li:hover{background:#1f2022}
+#history li.active{background:var(--active-row)}
+#history li .t{flex:1;overflow:hidden;text-overflow:ellipsis}
+#history li .ops{display:none}
+#history li:hover .ops,#history li.active .ops{display:flex}
+#history li .ops button{background:none;border:0;color:var(--muted);padding:0 4px;font-size:13px}
+#history li .ops button:hover{color:var(--text)}
+.footer{border-top:1px solid #303033;margin-top:8px;padding-top:10px;display:flex;align-items:center;gap:6px}
+.dot{width:9px;height:9px;border-radius:50%;background:#777;flex:none;margin-left:4px}
+.dot.ok{background:var(--accent)}.dot.bad{background:var(--red)}
+#conn{flex:1;color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* main */
+#main{flex:1;display:flex;flex-direction:column;min-width:0}
+.top{height:60px;flex:none;display:flex;align-items:center;gap:8px;padding:0 20px 0 12px;border-bottom:1px solid #36373b}
+.top .menu{background:none;border:0;font-size:18px;padding:4px 10px;border-radius:6px}
+.top .menu:hover{background:var(--panel)}
+#title{flex:1;font-weight:700;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#messages{flex:1;overflow-y:auto;padding:20px 24px}
+.inner{max-width:880px;margin:0 auto}
+.empty{text-align:center;padding-top:14vh}
+.empty h1{font-size:30px;margin:0 0 6px}.empty .sub{color:var(--muted)}
+.msg{margin-bottom:22px}
+.who{font-weight:700;font-size:13.5px;margin:4px 0 6px}
+.who.user{color:var(--user-name)}.who.ai{color:var(--accent)}
+.bubble{background:var(--user-bubble);padding:8px 12px;border-radius:10px;white-space:pre-wrap;word-wrap:break-word;display:inline-block;max-width:100%}
+.content p{margin:0 0 6px;white-space:pre-wrap;word-wrap:break-word}
+.content h2{font-size:21px;margin:12px 0 6px}.content h3{font-size:17px;margin:10px 0 4px}
+.content ul,.content ol{margin:0 0 6px;padding-left:28px}
+.content li{margin-bottom:3px}.content li.sub{margin-left:22px;list-style:circle}
+.content blockquote{margin:0 0 6px;padding-left:12px;border-left:3px solid #61646a;color:var(--quote)}
+.content hr{border:0;border-top:1px solid var(--line);margin:10px 0}
+.content a{color:var(--link)}
+.content code{font-family:var(--mono);font-size:13.5px;background:var(--inline-code);padding:1px 5px;border-radius:4px}
+.code{background:var(--code-bg);border-radius:8px;margin:6px 0 10px;overflow:hidden}
+.code-head{display:flex;justify-content:space-between;align-items:center;padding:5px 12px;color:var(--muted);font-size:12.5px;border-bottom:1px solid #222}
+.code-head button{background:none;border:0;color:var(--muted);font-size:12.5px}
+.code-head button:hover{color:var(--text)}
+.code pre{margin:0;padding:12px 14px;overflow-x:auto}
+.code pre code{background:none;padding:0;color:#d4d4d4;font-size:13.5px;white-space:pre}
+/* สีโค้ด (โทน VS Code Dark+) */
+.tk-k{color:#c586c0}            /* keyword ควบคุม */
+.tk-l{color:#569cd6}            /* true/false/null/self, G-code G */
+.tk-t{color:#4ec9b0}            /* type / builtin */
+.tk-f{color:#dcdcaa}            /* function call */
+.tk-s{color:#ce9178}            /* string, F/S/T ใน G-code */
+.tk-n{color:#b5cea8}            /* number */
+.tk-c{color:#6a9955;font-style:italic}  /* comment */
+.tk-p{color:#9cdcfe}            /* property / key / แกน XYZ */
+.tk-d{color:#dcdcaa}            /* decorator / preprocessor */
+.tk-v{color:#4fc1ff}            /* $variable */
+.tk-m{color:#d16969}            /* M-code */
+.tk-x{color:#808080}            /* N line number */
+details.thought{margin:0 0 8px}
+details.thought summary{color:var(--muted);font-size:13px;cursor:pointer;user-select:none}
+details.thought .tbody{background:var(--thought-bg);color:var(--thought-fg);font-size:13px;padding:8px 12px;border-radius:8px;margin-top:6px;white-space:pre-wrap}
+.meta{color:var(--muted);font-size:12.5px;margin-top:6px}
+.actions{margin-top:4px}
+.actions button{background:none;border:0;color:var(--muted);font-size:12.5px;padding:0}
+.actions button:hover{color:var(--text)}
+.cursor{color:var(--muted);font-size:13px}
+
+/* composer */
+.composer-wrap{flex:none;border-top:1px solid #343538;padding:10px 18px 12px}
+.composer{max-width:880px;margin:0 auto;display:flex;align-items:flex-end;gap:8px;background:var(--composer);
+  border:1px solid #505257;border-radius:14px;padding:4px 9px 4px 4px}
+.composer:focus-within{border-color:var(--accent)}
+#prompt{flex:1;resize:none;border:0;outline:none;background:transparent;padding:10px;max-height:220px;min-height:48px;line-height:1.5}
+#prompt::placeholder{color:#7d7f84}
+#send{margin-bottom:5px;min-width:84px}
+#status{text-align:center;color:var(--muted);font-size:12.5px;margin-top:7px}
+#status.warn{color:#f1c27d}
+#credit{text-align:center;color:#6f7176;font-size:11.5px;margin-top:3px}
+#credit a{color:var(--muted);text-decoration:none}
+#credit a:hover{color:var(--accent);text-decoration:underline}
+.composer{flex-wrap:wrap}
+#attach{background:none;border:0;font-size:20px;color:var(--muted);padding:6px 8px;margin-bottom:6px;border-radius:8px}
+#attach:hover{color:var(--text);background:var(--panel-hover)}
+#chips{flex-basis:100%;display:flex;flex-wrap:wrap;gap:8px;padding:8px 6px 0}
+#chips:empty{display:none}
+.chip{display:flex;align-items:center;gap:8px;background:var(--field);border:1px solid var(--border);border-radius:10px;
+  padding:5px 8px;font-size:13px;max-width:260px}
+.chip img{width:42px;height:42px;object-fit:cover;border-radius:6px}
+.chip .ico{font-size:22px}
+.chip .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip .sz{color:var(--muted);font-size:11.5px}
+.chip.err{border-color:var(--red)}.chip.err .sz{color:var(--red)}
+.chip .rm{background:none;border:0;color:var(--muted);font-size:15px;padding:0 2px}
+.chip .rm:hover{color:var(--red)}
+.composer.drag{border-color:var(--accent);border-style:dashed}
+.att{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.att img{max-width:220px;max-height:180px;border-radius:8px;cursor:zoom-in;border:1px solid var(--line)}
+.att details{background:var(--field);border:1px solid var(--border);border-radius:10px;padding:6px 10px;font-size:13px;max-width:100%}
+.att summary{cursor:pointer}
+.att pre{max-height:300px;overflow:auto;font-family:var(--mono);font-size:12px;white-space:pre-wrap;margin:6px 0 0;color:var(--thought-fg)}
+#viewer{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:20;cursor:zoom-out}
+#viewer img{max-width:94vw;max-height:94vh}
+
+/* settings */
+/* ปุ่มวิธีใช้ + หน้าต่างวิธีใช้ */
+#helpBtn{width:30px;height:30px;flex:none;border-radius:50%;border:1px solid var(--accent);background:transparent;
+  color:var(--accent);font-weight:700;font-size:15px;padding:0;margin-left:2px}
+#helpBtn:hover{background:var(--accent);color:var(--accent-text)}
+dialog#help{width:min(720px,94vw);max-height:90vh;padding:0}
+#help .hd{position:sticky;top:0;background:var(--panel);display:flex;align-items:center;justify-content:space-between;
+  padding:16px 22px 12px;border-bottom:1px solid var(--line);z-index:1}
+#help .hd h2{margin:0}
+#help .hd button{background:none;border:0;color:var(--muted);font-size:22px;padding:0 4px}
+#help .hd button:hover{color:var(--text)}
+#help .hd button:focus{outline:none}
+@media (max-width:520px){#help .bd{padding:4px 14px 18px;font-size:14px}.step{gap:10px}.step .no{width:28px;height:28px;font-size:14px}#help th,#help td{padding:5px 6px}}
+#help .bd{padding:6px 22px 22px;font-size:14.5px}
+.step{display:flex;gap:14px;margin-top:18px}
+.step .no{flex:none;width:32px;height:32px;border-radius:50%;background:var(--accent);color:var(--accent-text);
+  font-weight:700;display:flex;align-items:center;justify-content:center;font-size:16px}
+.step .tx{flex:1;min-width:0}
+.step h3{margin:3px 0 6px;font-size:16px}
+.step p,.step li{margin:0 0 6px;color:#dadadd}
+.step ul,.step ol{padding-left:20px;margin:4px 0 6px}
+#help code,#help kbd{font-family:var(--mono);font-size:13px;background:var(--inline-code);padding:1px 6px;border-radius:4px}
+#help a{color:var(--link)}
+#help .tip{background:#233a30;border-left:3px solid var(--accent);padding:8px 12px;border-radius:6px;margin:8px 0;color:#dfeee6}
+#help .warn{background:#3a3023;border-left:3px solid #f1c27d;padding:8px 12px;border-radius:6px;margin:8px 0;color:#f3e6d2}
+#help table{width:100%;border-collapse:collapse;margin:6px 0 8px;font-size:13.5px}
+#help th,#help td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+#help th{background:var(--field);color:var(--muted);font-weight:600}
+#help td code{white-space:nowrap}
+#help .tbl{overflow-x:auto}
+#help h4{margin:22px 0 6px;font-size:15px;color:var(--accent)}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:18px 22px;width:min(520px,92vw)}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+dialog h2{margin:0 0 4px;font-size:18px}
+dialog label{display:block;color:#d0d0d2;font-size:13px;margin:12px 0 4px}
+dialog .row{display:flex;gap:12px}dialog .row>div{flex:1}
+dialog input[type=range]{width:100%;accent-color:var(--accent)}
+dialog .check{display:flex;align-items:center;gap:8px;margin-top:14px;color:var(--text);font-size:14px}
+dialog .check input{accent-color:var(--accent);width:16px;height:16px}
+dialog .note{color:#c6c9cb;font-size:12.5px;margin-top:12px;word-break:break-all}
+dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+#hostErr{color:var(--red);font-size:12.5px;display:none}
+/* จอแคบ (มือถือ/แท็บเล็ตแนวตั้ง): แถบข้างเป็นลิ้นชักเลื่อนออก ซ่อนไว้ก่อน กด ☰ เพื่อเปิด */
+#backdrop{display:none}
+@media (max-width:860px){
+  html,body{height:100dvh}
+  #sidebar,body.no-side #sidebar{display:flex;position:fixed;top:0;left:0;bottom:0;z-index:30;width:min(300px,85vw);
+    transform:translateX(-100%);transition:transform .22s ease;box-shadow:none}
+  body.side-open #sidebar{transform:none;box-shadow:4px 0 24px rgba(0,0,0,.5)}
+  body.side-open #backdrop{display:block;position:fixed;inset:0;z-index:25;background:rgba(0,0,0,.5)}
+  .top{height:52px;padding:0 10px 0 6px;gap:6px}
+  #title{font-size:15px}
+  .top .btn.small{padding:5px 8px;font-size:12.5px}
+  #messages{padding:14px 12px}
+  .composer-wrap{padding:8px 10px 10px}
+  #prompt{font-size:16px}               /* กัน iOS ซูมหน้าจอเมื่อแตะช่องพิมพ์ */
+  #send{min-width:64px;padding:8px 10px}
+  #status{font-size:11.5px}
+  .att img{max-width:150px;max-height:130px}
+  #history li .ops{display:flex}        /* จอสัมผัสไม่มี hover → แสดงปุ่มตลอด */
+}
+@media (max-width:420px){
+  #regen,#export{font-size:0;padding:6px 9px}
+  #regen::before{content:"↻";font-size:15px}
+  #export::before{content:"↓";font-size:15px}
+}
+</style>
+</head>
+<body>
+<aside id="sidebar">
+  <div class="brand">● LOCAL <b>AI</b> CHAT</div>
+  <button class="btn full" id="newChat">＋&nbsp; แชตใหม่</button>
+  <div class="section">โมเดลใน Ollama</div>
+  <select class="field" id="model"><option>กำลังโหลด...</option></select>
+  <button class="btn full" id="refresh" style="margin-top:8px">↻&nbsp; โหลดรายชื่อโมเดลใหม่</button>
+  <div class="section">ค้นหาประวัติ</div>
+  <input class="field" id="search" placeholder="พิมพ์เพื่อค้นหา...">
+  <ul id="history"></ul>
+  <div class="footer">
+    <span class="dot" id="dot"></span><span id="conn">กำลังตรวจสอบ...</span>
+    <button class="btn ghost" id="openSettings">⚙ ตั้งค่า</button>
+  </div>
+</aside>
+
+<div id="backdrop"></div>
+<main id="main">
+  <div class="top">
+    <button class="menu" id="toggleSide" title="ซ่อน/แสดงแถบข้าง">☰</button>
+    <div id="title">แชตใหม่</div>
+    <button class="btn small" id="regen">↻ ตอบใหม่</button>
+    <button class="btn small" id="export">↓ .md</button>
+    <button id="helpBtn" title="วิธีใช้โปรแกรม">?</button>
+  </div>
+  <div id="messages"><div class="inner" id="list"></div></div>
+  <div class="composer-wrap">
+    <div class="composer" id="composer">
+      <div id="chips"></div>
+      <button id="attach" title="แนบรูปภาพหรือเอกสาร (xlsx, csv, docx, pdf, pptx, txt...) — ลากวางหรือวางรูป (Ctrl+V) ได้">📎</button>
+      <input type="file" id="fileInput" multiple hidden
+        accept="image/*,.xlsx,.xlsm,.xls,.csv,.tsv,.docx,.pptx,.pdf,.txt,.md,.json,.xml,.html,.log,.yaml,.yml,.py,.js,.sql,.nc,.gcode,.tap">
+      <textarea id="prompt" rows="2" placeholder="ถามอะไรก็ได้... (Enter เพื่อส่ง • แนบไฟล์ด้วย 📎)"></textarea>
+      <button class="btn accent" id="send">ส่ง ↑</button>
+    </div>
+    <div id="status">Enter ส่ง • Shift+Enter ขึ้นบรรทัด • Esc หยุด • ทุกอย่างประมวลผลด้วย Ollama ในเครื่อง</div>
+    <div id="credit">Developed by <a href="https://uncle-engineer.com/" target="_blank" rel="noopener">Uncle Engineer</a></div>
+  </div>
+</main>
+
+<div id="viewer"><img alt=""></div>
+
+<dialog id="help">
+  <div class="hd"><h2>❓ วิธีใช้ Local AI Chat</h2><button id="helpClose" title="ปิด">×</button></div>
+  <div class="bd">
+    <p style="margin-top:14px">โปรแกรมนี้เป็น "หน้าจอแชต" ส่วน "สมองของ AI" คือโปรแกรม <b>Ollama</b> ที่ต้องติดตั้งในเครื่องก่อน
+      ทุกอย่างทำงานในเครื่องของเรา ไม่ส่งข้อมูลออกอินเทอร์เน็ต</p>
+
+    <div class="step"><div class="no">1</div><div class="tx">
+      <h3>ติดตั้ง Ollama</h3>
+      <ol>
+        <li>เข้าเว็บ <a href="https://ollama.com/download" target="_blank" rel="noopener">ollama.com/download</a></li>
+        <li>เลือก Windows หรือ macOS แล้วกดดาวน์โหลด</li>
+        <li>ดับเบิลคลิกไฟล์ที่ได้ แล้วกด Install เหมือนลงโปรแกรมทั่วไป</li>
+      </ol>
+      <div class="tip">ติดตั้งเสร็จจะเห็นไอคอนรูป 🦙 ที่มุมขวาล่างของ Windows (ข้างนาฬิกา) แปลว่า Ollama ทำงานอยู่</div>
+    </div></div>
+
+    <div class="step"><div class="no">2</div><div class="tx">
+      <h3>เช็กว่าเครื่องเรารองรับโมเดลขนาดไหน</h3>
+      <p>โมเดลใหญ่ = ฉลาดกว่า แต่ต้องใช้หน่วยความจำการ์ดจอ (VRAM) มากกว่า ดูได้แบบนี้:</p>
+      <ol>
+        <li>กด <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Esc</kbd> เปิด Task Manager</li>
+        <li>ไปแท็บ <b>Performance</b> → คลิก <b>GPU</b></li>
+        <li>ดูตัวเลข <b>Dedicated GPU memory</b> เช่น 8.0 GB = การ์ดจอมี VRAM 8 GB</li>
+      </ol>
+      <p>Mac รุ่นชิป M ให้ดูจำนวน RAM ทั้งหมดแทน (เมนูรูปแอปเปิ้ลมุมซ้ายบน → About This Mac) แล้วใช้ประมาณ 2 ใน 3 ของ RAM</p>
+    </div></div>
+
+    <div class="step"><div class="no">3</div><div class="tx">
+      <h3>เลือกโมเดลให้เหมาะกับเครื่อง</h3>
+      <div class="tbl"><table>
+        <tr><th>หน่วยความจำการ์ดจอ</th><th>โมเดลที่แนะนำ</th><th>เหมาะกับ</th></tr>
+        <tr><td>ไม่มีการ์ดจอ / ไม่เกิน 4 GB</td><td><code>qwen3.5:2b</code></td><td>ถาม-ตอบสั้นๆ, ทดลองใช้ (ดูรูปได้)</td></tr>
+        <tr><td>6 – 8 GB</td><td><code>qwen3:8b</code> หรือ <code>gemma3:4b</code></td><td>ใช้งานทั่วไป ภาษาไทยดี (gemma3 ดูรูปได้)</td></tr>
+        <tr><td>12 – 16 GB</td><td><code>qwen3:14b</code> หรือ <code>gemma3:12b</code></td><td>งานจริงจัง สรุปเอกสาร วิเคราะห์ตาราง</td></tr>
+        <tr><td>24 GB ขึ้นไป</td><td><code>qwen3.5:27b</code> หรือ <code>gemma3:27b</code></td><td>คุณภาพสูงสุดในเครื่องเดียว</td></tr>
+      </table></div>
+      <p>เลือกตามงานเฉพาะทาง:</p>
+      <ul>
+        <li><b>เขียนโค้ด</b> → <code>qwen2.5-coder:7b</code> (8 GB) หรือ <code>qwen3-coder:30b</code> (24 GB)</li>
+        <li><b>วิเคราะห์รูปภาพ / อ่านแบบงาน / OCR</b> → ต้องเป็นโมเดลที่ดูรูปได้ เช่น <code>gemma3</code>, <code>qwen2.5vl</code>, <code>qwen3.5</code></li>
+        <li><b>คิดเป็นขั้นตอน (Thinking)</b> → <code>qwen3</code> หรือ <code>deepseek-r1</code> แล้วเปิดโหมด Thinking ใน ⚙ ตั้งค่า</li>
+      </ul>
+      <div class="warn"><b>กฎง่ายๆ:</b> ขนาดไฟล์โมเดลควรน้อยกว่า VRAM ประมาณ 1–2 GB ถ้าใหญ่เกิน โปรแกรมยังทำงานได้แต่จะ <b>ช้าลงมาก</b>
+        เพราะต้องไปใช้ RAM แทน • ชื่อรุ่นใหม่ๆ ออกเรื่อยๆ ถ้าในรายการมีเวอร์ชันใหม่กว่าของตระกูลเดียวกัน (เช่น qwen, gemma) เลือกตัวใหม่ได้เลย</div>
+    </div></div>
+
+    <div class="step"><div class="no">4</div><div class="tx">
+      <h3>ดาวน์โหลดโมเดล แล้วทดสอบด้วยคำว่า hello</h3>
+      <ol>
+        <li>เปิดโปรแกรม <b>Ollama</b> (จากเมนู Start หรือคลิกไอคอน 🦙)</li>
+        <li>ที่ช่องพิมพ์ด้านล่าง กดชื่อโมเดลเพื่อเปิดรายการ แล้ว<b>เลือกโมเดล</b>ตามตารางข้อ 3
+          (ถ้าไม่มีในรายการ กดค้นหาแล้วพิมพ์ชื่อได้)</li>
+        <li>พิมพ์ <code>hello</code> แล้วกด Enter</li>
+        <li>ครั้งแรก Ollama จะ<b>ดาวน์โหลดโมเดลอัตโนมัติ</b> (ไฟล์หลาย GB รอสักครู่ตามความเร็วเน็ต)</li>
+        <li>ถ้า AI ตอบกลับมาได้ = ติดตั้งสำเร็จ 🎉</li>
+      </ol>
+      <div class="warn">โมเดลที่มีคำว่า <b>cloud</b> ต่อท้าย ประมวลผลบนเซิร์ฟเวอร์ของ Ollama ไม่ใช่ในเครื่อง
+        ถ้าต้องการความเป็นส่วนตัว ให้เลือกตัวที่ไม่มีคำว่า cloud</div>
+      <p>หรือใช้คำสั่งใน Command Prompt ก็ได้ เช่น <code>ollama pull qwen3:8b</code></p>
+    </div></div>
+
+    <div class="step"><div class="no">5</div><div class="tx">
+      <h3>เริ่มใช้งานในโปรแกรมนี้</h3>
+      <ol>
+        <li>ที่แถบด้านซ้าย กด <b>↻ โหลดรายชื่อโมเดลใหม่</b></li>
+        <li>มุมซ้ายล่างต้องเป็น <span style="color:var(--accent)">●</span> <b>เชื่อมต่อแล้ว</b></li>
+        <li>เลือกโมเดลในช่อง "โมเดลใน Ollama"</li>
+        <li>พิมพ์ <code>hello</code> ในช่องด้านล่าง แล้วกด Enter ถ้า AI ตอบ = พร้อมใช้งาน</li>
+      </ol>
+    </div></div>
+
+    <div class="step"><div class="no">6</div><div class="tx">
+      <h3>ความสามารถที่ควรรู้</h3>
+      <ul>
+        <li><b>📎 แนบไฟล์</b> — รูปภาพ, Excel, CSV, Word, PDF, PowerPoint, G-code (ลากไฟล์มาวาง หรือกด <kbd>Ctrl</kbd>+<kbd>V</kbd> วางรูปก็ได้)</li>
+        <li><b>ไฟล์ใหญ่</b> — ไปที่ ⚙ ตั้งค่า แล้วเพิ่ม <b>Context Window</b> เป็น 16384 หรือ 32768 ไม่อย่างนั้น AI จะอ่านไม่ครบ (ใช้หน่วยความจำมากขึ้น)</li>
+        <li><b>System Prompt</b> ใน ⚙ ตั้งค่า — กำหนดบทบาท เช่น "คุณคือวิศวกรงานกลึง ตอบเป็นภาษาไทย"</li>
+        <li><b>คีย์ลัด</b> — <kbd>Enter</kbd> ส่ง • <kbd>Shift</kbd>+<kbd>Enter</kbd> ขึ้นบรรทัด • <kbd>Esc</kbd> หยุด • <kbd>Alt</kbd>+<kbd>N</kbd> แชตใหม่</li>
+        <li><b>ใช้จากเครื่องอื่น</b> — เครื่องในวง LAN เปิด <code id="helpUrl">http://IP-เครื่องนี้:5050</code> ได้เลย ไม่ต้องติดตั้งอะไร</li>
+      </ul>
+    </div></div>
+
+    <h4>🔧 แก้ปัญหาที่พบบ่อย</h4>
+    <div class="tbl"><table>
+      <tr><th>อาการ</th><th>วิธีแก้</th></tr>
+      <tr><td>มุมซ้ายล่างเป็น <span style="color:var(--red)">●</span> เชื่อมต่อไม่ได้</td><td>Ollama ยังไม่ได้เปิด → เปิดโปรแกรม Ollama แล้วกด ↻</td></tr>
+      <tr><td>ขึ้นว่า "ยังไม่มีโมเดล"</td><td>ยังไม่ได้ดาวน์โหลดโมเดล → ทำข้อ 4</td></tr>
+      <tr><td>ตอบช้ามาก (ไม่กี่คำต่อวินาที)</td><td>โมเดลใหญ่เกินการ์ดจอ → เปลี่ยนเป็นรุ่นเล็กลงตามตารางข้อ 3</td></tr>
+      <tr><td>แนบรูปแล้ว AI บอกว่ามองไม่เห็น</td><td>โมเดลนั้นดูรูปไม่ได้ → ใช้ gemma3, qwen2.5vl หรือ qwen3.5</td></tr>
+      <tr><td>วิเคราะห์ Excel แล้วข้อมูลหายบางส่วน</td><td>เพิ่ม Context Window ใน ⚙ ตั้งค่า (ดูข้อ 6)</td></tr>
+      <tr><td>เครื่องอื่นเปิดหน้านี้ไม่ได้</td><td>อนุญาต Python / พอร์ต 5050 ใน Windows Firewall</td></tr>
+    </table></div>
+  </div>
+</dialog>
+
+<dialog id="settings">
+  <h2>⚙&nbsp; ตั้งค่า Local AI</h2>
+  <label>Ollama Host</label>
+  <input class="field" id="sHost">
+  <div id="hostErr">เพื่อความปลอดภัย โปรดใช้ http://localhost:11434 หรือ http://127.0.0.1:11434</div>
+  <label>System Prompt (กำหนดบทบาท AI)</label>
+  <textarea class="field" id="sPrompt" rows="5"></textarea>
+  <label id="sTempLbl">Temperature</label>
+  <input type="range" id="sTemp" min="0" max="1.5" step="0.05">
+  <div class="row">
+    <div><label>Context Window (num_ctx)</label><input class="field" id="sCtx" type="number" min="512" max="131072" step="1024"></div>
+    <div><label>ข้อความย้อนหลัง (0 = ทั้งหมด)</label><input class="field" id="sHist" type="number" min="0" max="1000" step="2"></div>
+  </div>
+  <label class="check"><input type="checkbox" id="sThink"> เปิดโหมด Thinking (เฉพาะโมเดลที่รองรับ)</label>
+  <div class="note">ข้อมูลแชตบันทึกที่ __DATA_FILE__<br>ใช้กับ Ollama ที่คุณเปิดใช้งานในเครื่องเท่านั้น</div>
+  <div class="foot">
+    <button class="btn" id="sCancel">ยกเลิก</button>
+    <button class="btn accent" id="sSave">บันทึก</button>
+  </div>
+</dialog>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const HOST_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i;
+let S = {settings:{}, chats:[], currentId:null};
+let active = null;                 // สถานะการตอบที่กำลัง stream อยู่
+const openThoughts = new Set();
+let saveTimer = null, rafPending = false;
+
+// ------------------------------------------------------------ utils
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID()
+  : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {const r=Math.random()*16|0; return (c=="x"?r:(r&3|8)).toString(16);}));
+function setStatus(t, warn){ $("status").textContent = t; $("status").className = warn ? "warn" : ""; }
+const fmtSize = n => n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(0) + " KB" : (n / 1048576).toFixed(1) + " MB";
+function setConn(ok, t){ $("dot").className = "dot " + (ok ? "ok" : "bad"); $("conn").textContent = t; }
+async function copyText(text, msg){
+  try { await navigator.clipboard.writeText(text); }
+  catch { const ta=document.createElement("textarea"); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+  setStatus("✓ " + msg);
+}
+
+// ------------------------------------------------------------ data
+const current = () => S.chats.find(c => c.id === S.currentId) || null;
+function save(now){
+  clearTimeout(saveTimer);
+  const doSave = () => fetch("/api/data", {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(S)})
+    .then(r => r.ok ? null : r.json().then(j => setStatus("บันทึกไม่ได้: " + (j.error || r.status))))
+    .catch(e => setStatus("บันทึกไม่ได้: " + e.message));
+  if (now) return doSave();
+  saveTimer = setTimeout(doSave, 250);
+}
+function ensureChat(){
+  if (!current()) { if (S.chats.length) S.currentId = S.chats[0].id; else newChat(); }
+}
+function newChat(){
+  if (active) return;
+  const chat = {id:uuid(), title:"แชตใหม่", messages:[], updated:Date.now()};
+  S.chats.unshift(chat); S.currentId = chat.id;
+  save(); renderAll(); $("prompt").focus();
+}
+function selectChat(id){
+  if (active || id === S.currentId) return;
+  S.currentId = id; save(); renderAll();
+}
+function renameChat(id){
+  if (active) return;
+  const chat = S.chats.find(c => c.id === id); if (!chat) return;
+  const name = prompt("ชื่อใหม่:", chat.title);
+  if (name && name.trim()) { chat.title = name.trim().slice(0, 80); chat.updated = Date.now(); save(); renderAll(); }
+}
+function deleteChat(id){
+  if (active) return;
+  const chat = S.chats.find(c => c.id === id);
+  if (!chat || !confirm(`ลบการสนทนา “${chat.title}” หรือไม่?`)) return;
+  S.chats = S.chats.filter(c => c.id !== id);
+  if (S.currentId === id) S.currentId = S.chats.length ? S.chats[0].id : null;
+  ensureChat(); save(); renderAll();
+}
+
+// ------------------------------------------------------------ syntax highlight
+// ตัวไฮไลต์ขนาดเล็กในตัว (ไม่ใช้ CDN → ใช้งานออฟไลน์ใน LAN ได้)
+// หลักการ: รวม regex ของแต่ละภาษาเป็นตัวเดียว สแกนครั้งเดียว แล้วจัดชนิด token จาก group ที่ match
+const HL = (() => {
+  const set = s => new Set(s.split(/\s+/).filter(Boolean));
+  const P = {
+    slash: String.raw`\/\/.*|\/\*[\s\S]*?(?:\*\/|$)`,
+    block: String.raw`\/\*[\s\S]*?(?:\*\/|$)`,
+    hash:  String.raw`#.*`,
+    dash:  String.raw`--.*`,
+    dq:    String.raw`"(?:\\.|[^"\\\n])*"?`,
+    sq:    String.raw`'(?:\\.|[^'\\\n])*'?`,
+    bt:    String.raw`\x60(?:\\.|[^\x60\\])*\x60?`,
+    num:   String.raw`\b(?:0[xX][\da-fA-F_]+|0[bB][01_]+|\d[\d_]*(?:\.\d+)?(?:[eE][+-]?\d+)?)[a-zA-Z]*\b|\B\.\d+\b`,
+    id:    String.raw`[A-Za-z_$][\w$]*`,
+  };
+  const C_KW = "if else for while do switch case default break continue return goto try catch finally throw "
+    + "new delete class struct union enum typedef namespace using template typename public private protected "
+    + "virtual override static const constexpr volatile extern inline sizeof import package extends implements "
+    + "interface abstract final synchronized throws instanceof func fn let mut impl trait pub use mod match "
+    + "where loop go defer select chan range type var async await yield lock foreach in is as out ref";
+  const C_TYPES = "int long short char float double bool boolean void auto signed unsigned size_t uint8_t "
+    + "uint16_t uint32_t uint64_t int8_t int16_t int32_t int64_t string String byte str usize isize i32 i64 u8 "
+    + "u32 u64 f32 f64 Vec Option Result List Map Object var std vector cout cin endl printf Serial";
+  const GC_EXTRA = [
+    [String.raw`\([^)\n]*\)?|;.*`, "c"],
+    [String.raw`(?<![A-Za-z])[Nn]\d+`, "x"],
+    [String.raw`(?<![A-Za-z])[Gg]\d+(?:\.\d+)?`, "l"],
+    [String.raw`(?<![A-Za-z])[Mm]\d+`, "m"],
+    [String.raw`(?<![A-Za-z])[OoTt]\d+`, "t"],
+    [String.raw`(?<![A-Za-z])[XYZABCUVWIJKRxyzabcuvwijkr][+-]?(?:\d+\.?\d*|\.\d+)`, "p"],
+    [String.raw`(?<![A-Za-z])[FSHDPQLEfshdpqle][+-]?(?:\d+\.?\d*|\.\d+)`, "s"],
+    [String.raw`#\d+`, "v"],
+  ];
+  const L = {
+    python: {c:P.hash, s:String.raw`[rRbBfFuU]{0,2}(?:"{3}[\s\S]*?(?:"{3}|$)|'{3}[\s\S]*?(?:'{3}|$)|${P.dq}|${P.sq})`,
+      x:[[String.raw`@[\w.]+`, "d"]],
+      k:set("and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield match case"),
+      l:set("True False None self cls"),
+      t:set("print len range int float str list dict set tuple bytes bool open enumerate zip map filter sum min max abs round isinstance super type sorted reversed any all object Exception ValueError TypeError KeyError np pd plt")},
+    js: {c:P.slash, s:`${P.dq}|${P.sq}|${P.bt}`,
+      k:set("break case catch class const continue debugger default delete do else export extends finally for function if import in instanceof let new of return super switch throw try typeof var void while with yield async await static get set from as interface type enum implements private public protected readonly declare"),
+      l:set("true false null undefined NaN Infinity this"),
+      t:set("console Math JSON Object Array String Number Boolean Promise Date Map Set Error RegExp document window fetch require module process")},
+    json: {c:"", s:P.dq, x:[[String.raw`"(?:\\.|[^"\\\n])*"(?=\s*:)`, "p"]], l:set("true false null")},
+    c: {c:P.slash, s:`${P.dq}|${P.sq}`, x:[[String.raw`(?<=^|\n)[ \t]*#[ \t]*\w+(?:[ \t]*<[^>\n]*>)?`, "d"]],
+      k:set(C_KW), l:set("true false null nullptr NULL this self None"), t:set(C_TYPES)},
+    bash: {c:P.hash, s:`${P.dq}|${P.sq}`, x:[[String.raw`\$\{?[\w@#?*!-]+\}?`, "v"]],
+      k:set("if then else elif fi for while until do done case esac in function return export local exit set unset source alias"),
+      t:set("echo cd ls cp mv rm mkdir cat grep sed awk sudo apt pip python python3 git curl chmod chown")},
+    powershell: {c:P.hash, s:`${P.dq}|${P.sq}`, x:[[String.raw`\$[\w:]+`, "v"], [String.raw`\b[A-Z][a-z]+-[A-Z]\w+`, "f"]],
+      k:set("if else elseif foreach for while do switch function return param begin process end try catch finally throw in")},
+    sql: {c:`${P.dash}|${P.block}`, s:`${P.sq}|${P.dq}`, ci:true,
+      k:set("select from where and or not insert into values update set delete create table drop alter add join left right inner outer full cross on group by order having limit offset as distinct union all is in like between case when then else end primary key foreign references index view exists asc desc with returning default"),
+      l:set("null true false"), t:set("count sum avg min max coalesce cast now int integer varchar text date datetime timestamp real numeric")},
+    html: {c:"", s:`${P.dq}|${P.sq}`, nonum:true,
+      x:[[String.raw`<!--[\s\S]*?(?:-->|$)`, "c"], [String.raw`<\/?[\w:-]+|\/?>`, "l"], [String.raw`[\w:-]+(?==)`, "p"]]},
+    css: {c:P.block, s:`${P.dq}|${P.sq}`,
+      x:[[String.raw`@[\w-]+`, "k"], [String.raw`#[\da-fA-F]{3,8}\b`, "n"], [String.raw`[\w-]+(?=\s*:[^:{]*[;}\n])`, "p"]]},
+    gcode: {c:"", s:"", nonum:true, ci:true, x:GC_EXTRA,
+      k:set("IF THEN GOTO WHILE DO END EQ NE GT GE LT LE AND OR")},
+    tnc: {c:"", s:`${P.dq}`, ci:false, x:[[String.raw`;.*`, "c"], [String.raw`^\s*\d+(?=\s)`, "x"], ...GC_EXTRA.slice(3)],
+      k:set("BEGIN END PGM MM INCH BLK FORM TOOL CALL DEF CYCL LBL REP FN STOP FMAX FAUTO FZ CC CR CT CP RND CHF APPR DEP LCT LN LT RL RR DR DL"),
+      l:set("L C Q QR QL")},
+    plain: {c:"", s:`${P.dq}|${P.sq}`},
+  };
+  const ALIAS = {py:"python", python3:"python", javascript:"js", jsx:"js", ts:"js", typescript:"js", tsx:"js",
+    node:"js", cpp:"c", "c++":"c", cc:"c", h:"c", hpp:"c", java:"c", cs:"c", csharp:"c", go:"c", golang:"c",
+    rust:"c", rs:"c", kotlin:"c", kt:"c", swift:"c", dart:"c", arduino:"c", ino:"c", php:"c", scala:"c",
+    sh:"bash", shell:"bash", zsh:"bash", console:"bash", bat:"bash", cmd:"bash", ps1:"powershell", ps:"powershell",
+    pwsh:"powershell", mysql:"sql", postgres:"sql", postgresql:"sql", sqlite:"sql", xml:"html", svg:"html",
+    vue:"html", htm:"html", scss:"css", less:"css", nc:"gcode", cnc:"gcode", gc:"gcode", ngc:"gcode", tap:"gcode",
+    fanuc:"gcode", heidenhain:"tnc", klartext:"tnc", jsonc:"json", yaml:"bash", yml:"bash", toml:"bash", ini:"bash",
+    text:"plain", txt:"plain", md:"plain", markdown:"plain"};
+
+  function guess(code){
+    if (/^\s*(BEGIN PGM|\d+\s+(TOOL CALL|BLK FORM|L [XYZ]|CYCL DEF))/m.test(code)) return "tnc";
+    if ((code.match(/^\s*(N\d+\s*)?[GM]\d+/gim) || []).length >= 2 || /^%\s*$|^O\d{3,}/m.test(code)) return "gcode";
+    if (/^\s*(def |class \w+.*:|from [\w.]+ import|import \w+\s*$)/m.test(code)) return "python";
+    if (/^\s*#include|\bint\s+main\s*\(|\bstd::|\bpublic\s+(static\s+)?(void|class)/m.test(code)) return "c";
+    if (/^\s*[{\[]/.test(code)) { try { JSON.parse(code); return "json"; } catch {} }
+    if (/^\s*</.test(code)) return "html";
+    if (/^\s*(SELECT|INSERT|UPDATE|CREATE|DELETE|WITH)\b/i.test(code)) return "sql";
+    if (/\b(function|const|let)\b|=>|console\./.test(code)) return "js";
+    if (/^(#!\/bin|\$ |sudo |pip |apt |cd )/m.test(code)) return "bash";
+    return "plain";
+  }
+
+  const NOFN = set("plain gcode tnc html json css");
+  const cache = {};
+  function compile(name){
+    if (cache[name]) return cache[name];
+    const d = L[name], parts = [], kinds = [];
+    for (const [re, k] of d.x || []) { parts.push(re); kinds.push(k); }
+    if (d.c) { parts.push(d.c); kinds.push("c"); }
+    if (d.s) { parts.push(d.s); kinds.push("s"); }
+    if (!d.nonum) { parts.push(P.num); kinds.push("n"); }
+    parts.push(P.id); kinds.push("id");
+    return cache[name] = {d, kinds, re:new RegExp(parts.map(p => `(${p})`).join("|"), "g" + (name === "tnc" ? "m" : ""))};
+  }
+
+  function highlight(code, lang){
+    let name = (lang || "").toLowerCase();
+    name = L[name] ? name : ALIAS[name] || (name ? "plain" : guess(code));
+    if (code.length > 150000) return {html:esc(code), name};       // ยาวมาก ไม่ไฮไลต์ กันหน้าเว็บหน่วง
+    const {d, kinds, re} = compile(name);
+    let out = "", last = 0, m;
+    re.lastIndex = 0;
+    while ((m = re.exec(code))) {
+      if (!m[0]) { re.lastIndex++; continue; }
+      out += esc(code.slice(last, m.index));
+      let k = kinds[m.slice(1).findIndex(g => g !== undefined)];
+      const w = m[0];
+      if (k === "id") {
+        const key = d.ci ? w.toUpperCase() : w, low = w.toLowerCase();
+        const has = s => s && (s.has(key) || (d.ci && s.has(low)));
+        k = has(d.k) ? "k" : has(d.l) ? "l" : has(d.t) ? "t"
+          : /^\s*\(/.test(code.slice(re.lastIndex, re.lastIndex + 40)) && !NOFN.has(name) ? "f" : "";
+      }
+      out += k ? `<span class="tk-${k}">${esc(w)}</span>` : esc(w);
+      last = re.lastIndex;
+    }
+    return {html: out + esc(code.slice(last)), name};
+  }
+  return {highlight};
+})();
+
+// ------------------------------------------------------------ markdown
+function inline(text){
+  return esc(text).split(/(`[^`\n]+`)/).map(p => {
+    if (/^`[^`\n]+`$/.test(p)) return "<code>" + p.slice(1, -1) + "</code>";
+    return p.replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")
+            .replace(/~~([^~\n]+)~~/g, "<s>$1</s>")
+            .replace(/\*([^*\n]+)\*/g, "<i>$1</i>")
+            .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  }).join("");
+}
+function markdown(text){
+  const out = []; let inCode = false, code = [], lang = "", list = null;
+  const closeList = () => { if (list) { out.push(`</${list}>`); list = null; } };
+  const LABEL = {python:"python", js:"javascript", json:"json", c:"c / c++", bash:"shell", powershell:"powershell",
+                 sql:"sql", html:"html / xml", css:"css", gcode:"g-code", tnc:"heidenhain", plain:"code"};
+  const flush = () => {
+    const h = HL.highlight(code.join("\n"), lang);
+    out.push(`<div class="code"><div class="code-head"><span>${esc(lang || LABEL[h.name] || "code")}</span>`
+      + `<button data-act="ccopy">⧉ คัดลอกโค้ด</button></div><pre><code>${h.html}</code></pre></div>`);
+  };
+  for (const line of text.split("\n")) {
+    const f = line.match(/^\s*```\s*([\w.+-]*)/);
+    if (f) { if (inCode) { flush(); code = []; inCode = false; } else { closeList(); inCode = true; lang = f[1]; } continue; }
+    if (inCode) { code.push(line); continue; }
+    const t = line.trim();
+    if (!t) { closeList(); continue; }
+    let m;
+    if ((m = t.match(/^(#{1,6})\s+(.*)/))) { closeList(); const h = m[1].length === 1 ? "h2" : "h3"; out.push(`<${h}>${inline(m[2])}</${h}>`); continue; }
+    if (t.startsWith("> ") || t === ">") { closeList(); out.push(`<blockquote>${inline(t.slice(2))}</blockquote>`); continue; }
+    if ((m = t.match(/^([-*]|\d+[.)])\s+(.+)/))) {
+      const kind = /\d/.test(m[1]) ? "ol" : "ul";
+      if (list !== kind) { closeList(); out.push(`<${kind}>`); list = kind; }
+      const indent = line.length - line.trimStart().length;
+      out.push(`<li${indent >= 2 ? ' class="sub"' : ""}>${inline(m[2])}</li>`); continue;
+    }
+    if (/^[-*_]{3,}$/.test(t)) { closeList(); out.push("<hr>"); continue; }
+    closeList(); out.push(`<p>${inline(line)}</p>`);
+  }
+  closeList(); if (inCode) flush();
+  return out.join("");
+}
+
+// ------------------------------------------------------------ rendering
+function renderAll(){ renderHistory(); renderMessages(); }
+
+function renderHistory(){
+  const q = $("search").value.trim().toLowerCase();
+  const ul = $("history"); ul.innerHTML = "";
+  [...S.chats].sort((a, b) => (b.updated || 0) - (a.updated || 0)).forEach(chat => {
+    if (q) {
+      const blob = [chat.title, ...chat.messages.map(m => (m.content || "") + " "
+        + (m.attachments || []).map(a => a.name).join(" "))].join(" ").toLowerCase();
+      if (!blob.includes(q)) return;
+    }
+    const li = document.createElement("li");
+    if (chat.id === S.currentId) li.className = "active";
+    li.innerHTML = `<span class="t">▤&nbsp; ${esc(chat.title)}</span><span class="ops">`
+      + `<button title="เปลี่ยนชื่อ" data-op="rename">✎</button><button title="ส่งออก .md" data-op="export">↓</button>`
+      + `<button title="ลบแชต" data-op="delete">×</button></span>`;
+    li.onclick = e => {
+      const op = e.target.dataset.op;
+      if (op === "rename") renameChat(chat.id);
+      else if (op === "delete") deleteChat(chat.id);
+      else if (op === "export") exportMd(chat);
+      else selectChat(chat.id);
+    };
+    li.ondblclick = e => { if (!e.target.dataset.op) renameChat(chat.id); };
+    ul.appendChild(li);
+  });
+}
+
+function nearBottom(){ const el = $("messages"); return el.scrollHeight - el.scrollTop - el.clientHeight < 40; }
+
+function renderMessages(){
+  const near = nearBottom();
+  const chat = current();
+  $("title").textContent = chat ? chat.title : "แชตใหม่";
+  document.title = (chat && chat.messages.length ? chat.title + " · " : "") + "Local AI Chat";
+  const list = $("list"); list.innerHTML = "";
+  const msgs = chat ? chat.messages : [];
+  if (!msgs.length) {
+    list.innerHTML = `<div class="empty"><h1>สวัสดีครับ 👋</h1><div>Local AI ของคุณ พร้อมตอบด้วย Ollama บนเครื่องนี้</div>`
+      + `<div class="sub" style="margin-top:12px">เลือกโมเดลด้านซ้าย แล้วเริ่มพิมพ์ได้เลย</div></div>`;
+  } else {
+    msgs.forEach((m, i) => list.appendChild(renderMessage(chat, i, m)));
+  }
+  if (near || (msgs.length && msgs[msgs.length - 1].streaming)) $("messages").scrollTop = 1e9;
+}
+
+function renderStream(){
+  const chat = current(), list = $("list");
+  if (!chat || !chat.messages.length || !list.lastElementChild) return renderMessages();
+  const near = nearBottom();
+  const i = chat.messages.length - 1;
+  list.replaceChild(renderMessage(chat, i, chat.messages[i]), list.lastElementChild);
+  if (near) $("messages").scrollTop = 1e9;
+}
+function scheduleStream(){
+  if (rafPending) return;
+  rafPending = true;
+  requestAnimationFrame(() => { rafPending = false; if (active) renderStream(); });
+}
+
+function renderMessage(chat, i, m){
+  const div = document.createElement("div");
+  div.className = "msg";
+  if (m.role === "user") {
+    div.innerHTML = `<div class="who user">คุณ</div>` + renderAttachments(m)
+      + (m.content ? `<div class="bubble">${esc(m.content)}</div>` : "");
+    return div;
+  }
+  const name = m.model || S.settings.model || "Local AI";
+  let html = `<div class="who ai">✦ ${esc(name)}</div>`;
+  const key = chat.id + ":" + i;
+  if (m.thinking) {
+    const opened = openThoughts.has(key);
+    const label = (m.streaming && !m.content) ? "กำลังคิด... (คลิกเพื่อดู)" : (opened ? "ซ่อน Thinking" : "แสดง Thinking");
+    html += `<details class="thought" data-key="${esc(key)}"${opened ? " open" : ""}><summary>${label}</summary>`
+          + `<div class="tbody">${esc(m.thinking.trim())}</div></details>`;
+  }
+  if (m.content) html += `<div class="content">${markdown(m.content)}</div>`;
+  else if (m.streaming && !m.thinking) html += `<div class="cursor">▍ กำลังสร้างคำตอบ...</div>`;
+  const parts = [];
+  if (m.stats) parts.push(`${m.stats.tokens || 0} tokens · ${(m.stats.tps || 0).toFixed(1)} tok/s`);
+  if (m.interrupted) parts.push("หยุดกลางคัน");
+  if (parts.length) html += `<div class="meta">${parts.join(" · ")}</div>`;
+  if (!m.streaming) html += `<div class="actions"><button data-act="copy">⧉ คัดลอก</button></div>`;
+  div.innerHTML = html;
+  const det = div.querySelector("details");
+  if (det) det.addEventListener("toggle", () => {
+    if (det.open) openThoughts.add(key); else openThoughts.delete(key);
+    if (!(m.streaming && !m.content)) det.querySelector("summary").textContent = det.open ? "ซ่อน Thinking" : "แสดง Thinking";
+  });
+  const cp = div.querySelector('[data-act="copy"]');
+  if (cp) cp.onclick = () => copyText(m.content || "", "คัดลอกคำตอบแล้ว");
+  return div;
+}
+
+// คัดลอกโค้ดในโค้ดบล็อก
+$("list").addEventListener("click", e => {
+  if (e.target.dataset.act === "ccopy")
+    copyText(e.target.closest(".code").querySelector("pre").textContent, "คัดลอกโค้ดแล้ว");
+  if (e.target.dataset.act === "zoom") {
+    $("viewer").querySelector("img").src = e.target.src; $("viewer").style.display = "flex";
+  }
+});
+$("viewer").onclick = () => { $("viewer").style.display = "none"; };
+
+// ------------------------------------------------------------ attachments
+// รูปภาพ → ย่อขนาดในเบราว์เซอร์แล้วส่งเป็น base64 ใน field "images" ของ Ollama (ต้องใช้โมเดล vision)
+// เอกสาร → ส่งให้ Flask แปลงเป็นข้อความ แล้วแนบเข้าไปในข้อความถึงโมเดล
+const IMG_MAX = 1600;
+let pending = [];   // ไฟล์ที่แนบไว้ในช่องพิมพ์ ยังไม่ได้ส่ง
+
+function loadImage(file){
+  return new Promise((ok, fail) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, IMG_MAX / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+      g.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      ok(c.toDataURL("image/jpeg", 0.9));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); fail(new Error("เปิดรูปไม่ได้")); };
+    img.src = url;
+  });
+}
+
+function addFiles(files){
+  for (const file of files) {
+    const it = {id:uuid(), name:file.name || "pasted.png", size:file.size,
+                kind:(file.type || "").startsWith("image/") ? "image" : "file", status:"loading"};
+    if (it.kind === "image") {
+      it.promise = loadImage(file).then(d => { it.data = d; it.status = "ok"; });
+    } else {
+      const fd = new FormData(); fd.append("file", file);
+      it.promise = fetch("/api/extract", {method:"POST", body:fd})
+        .then(async r => { const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "HTTP " + r.status); return j; })
+        .then(j => { it.text = j.text; it.chars = j.chars; it.truncated = j.truncated; it.status = "ok"; });
+    }
+    it.promise = it.promise.catch(e => { it.status = "error"; it.err = e.message; setStatus(e.message, true); })
+                           .finally(renderChips);
+    pending.push(it);
+  }
+  renderChips();
+}
+
+function renderChips(){
+  const box = $("chips"); box.innerHTML = "";
+  for (const it of pending) {
+    const d = document.createElement("div");
+    d.className = "chip" + (it.status === "error" ? " err" : "");
+    const info = it.status === "loading" ? "กำลังอ่าน..." : it.status === "error" ? it.err
+      : it.kind === "image" ? "รูปภาพ · " + fmtSize(it.size)
+      : `${(it.chars || 0).toLocaleString()} ตัวอักษร${it.truncated ? " (ถูกตัด)" : ""}`;
+    d.innerHTML = (it.kind === "image" && it.data ? `<img src="${it.data}" alt="">` : `<span class="ico">${it.kind === "image" ? "🖼" : "📄"}</span>`)
+      + `<div style="min-width:0"><div class="nm" title="${esc(it.name)}">${esc(it.name)}</div><div class="sz" title="${esc(info)}">${esc(info)}</div></div>`
+      + `<button class="rm" title="เอาออก">×</button>`;
+    d.querySelector(".rm").onclick = () => { pending = pending.filter(x => x !== it); renderChips(); };
+    box.appendChild(d);
+  }
+}
+
+// ข้อความที่ส่งถึงโมเดลจริง = ข้อความผู้ใช้ + เนื้อหาเอกสารที่แนบ
+function modelContent(m){
+  let s = m.content || "";
+  for (const a of m.attachments || [])
+    if (a.kind === "file") s += `\n\n<file name="${a.name}">\n${a.text}\n</file>`;
+  return s;
+}
+const modelImages = m => (m.attachments || []).filter(a => a.kind === "image").map(a => a.data.split(",")[1]);
+
+function renderAttachments(m){
+  const atts = m.attachments || [];
+  if (!atts.length) return "";
+  return `<div class="att">` + atts.map((a, j) => a.kind === "image"
+    ? `<img src="${a.data}" alt="${esc(a.name)}" title="${esc(a.name)}" data-act="zoom">`
+    : `<details><summary>📄 ${esc(a.name)} · ${(a.chars || 0).toLocaleString()} ตัวอักษร${a.truncated ? " (ถูกตัด)" : ""}</summary><pre>${esc(a.text)}</pre></details>`
+  ).join("") + `</div>`;
+}
+
+// ------------------------------------------------------------ models
+async function refreshModels(){
+  const btn = $("refresh"); btn.disabled = true;
+  const sel = $("model"), s = S.settings;
+  const setOptions = (vals, label) => {
+    sel.innerHTML = "";
+    (vals.length ? vals : [label]).forEach(v => { const o = document.createElement("option"); o.textContent = v; o.value = v; sel.appendChild(o); });
+  };
+  try {
+    const r = await fetch("/api/models"); const j = await r.json();
+    if (!r.ok) throw new Error(j.error || "HTTP " + r.status);
+    if (!j.models.length) { setOptions([], "ยังไม่มีโมเดล"); setConn(false, "ยังไม่มีโมเดล"); autoHelp(); return; }
+    setOptions(j.models);
+    if (!j.models.includes(s.model)) { s.model = j.models[0]; save(); }
+    sel.value = s.model;
+    setConn(true, `เชื่อมต่อแล้ว · ${j.models.length} โมเดล`);
+  } catch (e) {
+    setOptions(s.model ? [s.model] : [], "ไม่พบ Ollama");
+    setConn(false, "เชื่อมต่อไม่ได้");
+    autoHelp();
+    setStatus("เชื่อมต่อ Ollama ไม่ได้ ตรวจว่า Ollama เปิดอยู่: " + e.message);
+  } finally { btn.disabled = false; }
+}
+
+// ------------------------------------------------------------ chat
+function setBusy(b){
+  const btn = $("send");
+  btn.textContent = b ? "หยุด ■" : "ส่ง ↑";
+  btn.className = "btn " + (b ? "stop" : "accent");
+}
+
+// แยกข้อความในแท็ก <think>…</think> ออกจากคำตอบ แม้แท็กจะขาดกลางระหว่าง chunk
+function feedContent(a, chunk){
+  const m = a.msg; a.buf += chunk;
+  while (a.buf) {
+    const tag = a.inThink ? "</think>" : "<think>";
+    const key = a.inThink ? "thinking" : "content";
+    const at = a.buf.indexOf(tag);
+    if (at >= 0) { m[key] += a.buf.slice(0, at); a.buf = a.buf.slice(at + tag.length); a.inThink = !a.inThink; continue; }
+    let hold = 0;
+    for (let k = Math.min(tag.length - 1, a.buf.length); k > 0; k--) if (a.buf.endsWith(tag.slice(0, k))) { hold = k; break; }
+    m[key] += a.buf.slice(0, a.buf.length - hold);
+    a.buf = a.buf.slice(a.buf.length - hold);
+    break;
+  }
+}
+function flushBuf(a){ if (a && a.buf) { a.msg[a.inThink ? "thinking" : "content"] += a.buf; a.buf = ""; } }
+
+async function sendMessage(regenerate){
+  if (active) { stop(); return; }
+  const chat = current(); if (!chat) return;
+  const msgs = chat.messages, box = $("prompt");
+  if (regenerate) {
+    if (msgs.length && msgs[msgs.length - 1].role === "assistant") msgs.pop();
+    if (!msgs.length || msgs[msgs.length - 1].role !== "user") { renderAll(); return; }
+  } else {
+    let text = box.value.trim();
+    if (!text && !pending.length) return;
+    if (pending.some(p => p.status === "loading")) {
+      if (sendMessage.waiting) return;           // กันกดส่งซ้ำระหว่างรออ่านไฟล์
+      sendMessage.waiting = true;
+      setStatus("กำลังอ่านไฟล์แนบ รอสักครู่...");
+      try { await Promise.all(pending.map(p => p.promise)); } finally { sendMessage.waiting = false; }
+      if (active) return;
+      text = box.value.trim();
+    }
+    const atts = pending.filter(p => p.status === "ok").map(p => p.kind === "image"
+      ? {kind:"image", name:p.name, data:p.data}
+      : {kind:"file", name:p.name, text:p.text, chars:p.chars, truncated:p.truncated});
+    if (!text && !atts.length) { setStatus("ไม่มีไฟล์แนบที่อ่านได้", true); return; }
+    if (!text) text = "ช่วยวิเคราะห์ไฟล์ที่แนบมา";
+    const um = {role:"user", content:text};
+    if (atts.length) um.attachments = atts;
+    msgs.push(um);
+    box.value = ""; autosize(); pending = []; renderChips();
+    if (chat.title === "แชตใหม่") chat.title = text.replace(/\s+/g, " ").slice(0, 42);
+  }
+  const s = S.settings;
+  if (!s.model) { setStatus("ยังไม่มีโมเดล กรุณาติดตั้งโมเดลใน Ollama ก่อน"); save(); renderAll(); return; }
+  chat.updated = Date.now();
+  const previous = msgs.filter(m => m.role === "user" || m.role === "assistant").map(m => {
+    const o = {role:m.role, content:modelContent(m)};
+    const imgs = modelImages(m); if (imgs.length) o.images = imgs;
+    return o;
+  });
+  const a = {role:"assistant", model:s.model, content:"", thinking:"", streaming:true};
+  msgs.push(a);
+  const mx = parseInt(s.maxHistory) || 0;
+  const history = mx > 0 ? previous.slice(-mx) : previous;
+  const sp = (s.systemPrompt || "").trim();
+  const body = {model:s.model, messages:(sp ? [{role:"system", content:sp}] : []).concat(history), stream:true,
+                options:{temperature:+s.temperature, num_ctx:parseInt(s.numCtx)}};
+  if (s.think) body.think = true;
+
+  const me = active = {ctl:new AbortController(), msg:a, inThink:false, buf:"", seen:false};
+  setBusy(true); save(); renderAll();
+  // ประมาณ token คร่าวๆ (ไทย/ตัวเลขในตาราง ~3 ตัวอักษรต่อ token) — ถ้าเกิน num_ctx Ollama จะตัดส่วนต้นทิ้งเงียบๆ
+  const estTok = Math.round(body.messages.reduce((n, m) => n + m.content.length, 0) / 3)
+               + body.messages.reduce((n, m) => n + (m.images ? m.images.length * 800 : 0), 0);
+  if (estTok > (parseInt(s.numCtx) || 8192) * 0.85)
+    setStatus(`⚠ ข้อความ+ไฟล์แนบประมาณ ${estTok.toLocaleString()} tokens เกิน Context Window (${s.numCtx}) — `
+            + `AI อาจเห็นข้อมูลไม่ครบ ควรเพิ่ม num_ctx ในตั้งค่า`, true);
+  else
+    setStatus("AI กำลังสร้างคำตอบ... กด Esc หรือปุ่มหยุดเพื่อยกเลิก");
+  try {
+    const r = await fetch("/api/chat", {method:"POST", headers:{"Content-Type":"application/json"},
+                                        body:JSON.stringify(body), signal:me.ctl.signal});
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "HTTP " + r.status);
+    const reader = r.body.getReader(), dec = new TextDecoder();
+    let rest = "";
+    for (;;) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      rest += dec.decode(value, {stream:true});
+      let nl;
+      while ((nl = rest.indexOf("\n")) >= 0) {
+        const line = rest.slice(0, nl).trim(); rest = rest.slice(nl + 1);
+        if (!line) continue;
+        const o = JSON.parse(line);
+        if (o.error) throw new Error(o.error);
+        const m = o.message || {};
+        if (m.thinking) a.thinking += m.thinking;
+        if (m.content) feedContent(me, m.content);
+        if (o.done) {
+          const n = o.eval_count || 0, d = o.eval_duration || 0;
+          a.stats = {tokens:n, tps: d ? n / (d / 1e9) : 0}; me.seen = true;
+        }
+      }
+      scheduleStream();
+    }
+    flushBuf(me);
+    if (!me.seen && !a.content && !a.thinking) {
+      a.content += "\n\n⚠ ข้อผิดพลาด: การเชื่อมต่อสิ้นสุดก่อนมีคำตอบ";
+      setStatus("เกิดข้อผิดพลาด: การเชื่อมต่อสิ้นสุดก่อนมีคำตอบ");
+    } else {
+      setStatus("ตอบเสร็จแล้ว • Enter ส่ง • Shift+Enter ขึ้นบรรทัด • Esc หยุด");
+    }
+  } catch (e) {
+    if (e.name !== "AbortError" && active === me) {
+      a.content += "\n\n⚠ ข้อผิดพลาด: " + e.message;
+      setStatus("เกิดข้อผิดพลาด: " + e.message);
+    }
+  } finally {
+    if (active === me) finish();
+  }
+}
+
+function stop(){
+  const a = active; if (!a) return;
+  a.msg.interrupted = true;
+  a.ctl.abort();           // ตัดการเชื่อมต่อ → Flask ปิดการเชื่อมต่อกับ Ollama ตาม
+  setStatus("หยุดการตอบแล้ว");
+  finish();
+}
+function finish(){
+  if (active) { flushBuf(active); active.msg.streaming = false; }
+  active = null;
+  setBusy(false); save(true); renderAll(); $("prompt").focus();
+}
+
+function exportMd(chat){
+  const c = chat || current();
+  if (!c || !c.messages.length) return;
+  let txt = "# " + c.title + "\n\n";
+  for (const m of c.messages) {
+    txt += "## " + (m.role === "user" ? "คุณ" : (m.model || "AI")) + "\n\n";
+    for (const a of m.attachments || []) txt += `> แนบไฟล์: ${a.name}\n\n`;
+    txt += (m.content || "") + "\n\n";
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([txt], {type:"text/markdown;charset=utf-8"}));
+  a.download = "ollama-chat-" + new Date().toISOString().slice(0, 10) + ".md";
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  setStatus("ส่งออกแล้ว: " + a.download);
+}
+
+// ------------------------------------------------------------ settings
+function openSettings(){
+  const s = S.settings;
+  $("sHost").value = s.host; $("sPrompt").value = s.systemPrompt || "";
+  $("sTemp").value = s.temperature; $("sCtx").value = s.numCtx; $("sHist").value = s.maxHistory;
+  $("sThink").checked = !!s.think; $("hostErr").style.display = "none";
+  updTemp(); $("settings").showModal();
+}
+function updTemp(){ $("sTempLbl").textContent = "Temperature: " + (+$("sTemp").value).toFixed(2); }
+function saveSettings(){
+  const host = $("sHost").value.trim().replace(/\/+$/, "");
+  if (!HOST_RE.test(host)) { $("hostErr").style.display = "block"; return; }
+  const toInt = (v, d) => { const n = parseInt(parseFloat(v)); return isNaN(n) ? d : n; };
+  Object.assign(S.settings, {
+    host, systemPrompt:$("sPrompt").value, temperature:+$("sTemp").value,
+    numCtx:Math.max(512, toInt($("sCtx").value, 8192)), maxHistory:Math.max(0, toInt($("sHist").value, 0)),
+    think:$("sThink").checked,
+  });
+  $("settings").close();
+  save(true).then(refreshModels);
+}
+
+// ------------------------------------------------------------ events
+function autosize(){ const p = $("prompt"); p.style.height = "auto"; p.style.height = Math.min(p.scrollHeight, 220) + "px"; }
+
+$("newChat").onclick = newChat;
+$("refresh").onclick = refreshModels;
+$("search").oninput = renderHistory;
+$("model").onchange = e => { S.settings.model = e.target.value; save(); };
+$("openSettings").onclick = openSettings;
+function openHelp(){
+  if (!/^(127\.|localhost)/.test(location.hostname)) $("helpUrl").textContent = location.origin;
+  $("help").showModal(); $("help").scrollTop = 0;
+}
+$("helpBtn").onclick = openHelp;
+$("helpClose").onclick = () => $("help").close();
+$("help").addEventListener("click", e => { if (e.target === $("help")) $("help").close(); });  // คลิกนอกกรอบเพื่อปิด
+// เปิดวิธีใช้ให้อัตโนมัติครั้งแรก ถ้ายังต่อ Ollama ไม่ได้หรือยังไม่มีโมเดล (ครั้งเดียวต่อเบราว์เซอร์)
+function autoHelp(){
+  try { if (localStorage.getItem("localai_help_seen")) return; localStorage.setItem("localai_help_seen", "1"); } catch { return; }
+  if (!$("settings").open) openHelp();
+}
+// จอกว้าง: ☰ ซ่อน/แสดงแถบข้าง  •  จอแคบ: ☰ เปิดลิ้นชัก แตะพื้นหลังหรือเลือกแชตเพื่อปิด
+const narrow = matchMedia("(max-width:860px)");
+const closeDrawer = () => document.body.classList.remove("side-open");
+$("toggleSide").onclick = () => document.body.classList.toggle(narrow.matches ? "side-open" : "no-side");
+$("backdrop").onclick = closeDrawer;
+narrow.addEventListener("change", closeDrawer);
+$("history").addEventListener("click", e => { if (narrow.matches && !e.target.dataset.op) closeDrawer(); });
+$("newChat").addEventListener("click", () => { if (narrow.matches) closeDrawer(); });
+$("regen").onclick = () => sendMessage(true);
+$("export").onclick = () => exportMd();
+$("send").onclick = () => sendMessage(false);
+$("sTemp").oninput = updTemp;
+$("sSave").onclick = saveSettings;
+$("sCancel").onclick = () => $("settings").close();
+$("prompt").addEventListener("input", autosize);
+$("attach").onclick = () => $("fileInput").click();
+$("fileInput").onchange = e => { addFiles([...e.target.files]); e.target.value = ""; };
+$("prompt").addEventListener("paste", e => {
+  const files = [...(e.clipboardData?.files || [])];
+  if (files.length) { e.preventDefault(); addFiles(files); }
+});
+const comp = $("composer");
+["dragenter", "dragover"].forEach(t => comp.addEventListener(t, e => { e.preventDefault(); comp.classList.add("drag"); }));
+["dragleave", "drop"].forEach(t => comp.addEventListener(t, e => { e.preventDefault(); comp.classList.remove("drag"); }));
+comp.addEventListener("drop", e => addFiles([...e.dataTransfer.files]));
+document.addEventListener("dragover", e => e.preventDefault());
+document.addEventListener("drop", e => e.preventDefault());
+$("prompt").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendMessage(false); }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && $("viewer").style.display === "flex") { $("viewer").style.display = "none"; return; }
+  if (e.key === "Escape" && document.body.classList.contains("side-open")) { closeDrawer(); return; }
+  if (e.key === "Escape" && active && !$("settings").open) stop();
+  if (e.altKey && (e.key === "n" || e.key === "N")) { e.preventDefault(); newChat(); }
+});
+window.addEventListener("beforeunload", () => {
+  if (active) { active.msg.interrupted = true; active.msg.streaming = false; }
+  clearTimeout(saveTimer);
+  fetch("/api/data", {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(S), keepalive:true});
+});
+
+// ------------------------------------------------------------ start
+(async () => {
+  try { S = await (await fetch("/api/data")).json(); }
+  catch (e) { setStatus("โหลดข้อมูลไม่ได้: " + e.message); }
+  ensureChat(); renderAll(); autosize(); refreshModels(); $("prompt").focus();
+})();
+</script>
+</body>
+</html>
+"""
+
+
+def lan_ips():
+    """หา IP ของเครื่องนี้ในวง LAN (ไว้บอกว่าเครื่องอื่นต้องเปิด URL ไหน)"""
+    ips = set()
+    try:  # วิธีนี้ไม่ได้ส่งข้อมูลออกไปจริง แค่ให้ OS เลือก interface ที่ใช้ออกเน็ต
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            ips.add(s.getsockname()[0])
+    except OSError:
+        pass
+    try:
+        ips.update(socket.gethostbyname_ex(socket.gethostname())[2])
+    except OSError:
+        pass
+    return sorted(ip for ip in ips if not ip.startswith("127."))
+
+
+def main():
+    print(f"{APP_TITLE}\n  ข้อมูลแชต: {DATA_FILE}")
+    print(f"  เครื่องนี้:      http://127.0.0.1:{LISTEN_PORT}")
+    if LISTEN_HOST in ("0.0.0.0", "::"):
+        for ip in lan_ips():
+            print(f"  เครื่องอื่นในวง: http://{ip}:{LISTEN_PORT}")
+        print("  ⚠ ไม่มีระบบล็อกอิน — ทุกเครื่องในวง LAN เห็นและแก้ประวัติแชตเดียวกันได้\n"
+              "    ถ้าต้องการเปิดเฉพาะเครื่องนี้ ให้ตั้ง LOCALAI_HOST=127.0.0.1")
+    app.run(host=LISTEN_HOST, port=LISTEN_PORT, threaded=True, debug=False)
+
+
+if __name__ == "__main__":
+    main()
